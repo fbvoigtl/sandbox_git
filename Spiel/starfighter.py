@@ -70,6 +70,7 @@ def profile_paths(gamertag):
     return {
         "settings": find_first_existing(
             [
+                BASE_DIR / "spielerdaten" / f"settings_{gamertag}.txt",
                 BASE_DIR / f"settings_{gamertag}.txt",
                 ROOT_DIR / f"settings_{gamertag}.txt",
                 BASE_DIR / "settings_gamertag.txt",
@@ -77,6 +78,7 @@ def profile_paths(gamertag):
         ),
         "highscore": find_first_existing(
             [
+                BASE_DIR / "spielerdaten" / f"highscore_{gamertag}.txt",
                 BASE_DIR / f"highscore_{gamertag}.txt",
                 ROOT_DIR / f"highscore_{gamertag}.txt",
                 BASE_DIR / "highscore_gamertag.txt",
