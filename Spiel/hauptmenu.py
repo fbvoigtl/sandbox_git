@@ -183,12 +183,19 @@ def zeige_einstellungen(name: str):
 
 
 def git_auto_pull():
-    result = subprocess.run(
-        ["git", "pull"],
+    fetch = subprocess.run(
+        ["git", "fetch"],
         cwd=SPIEL_DIR, capture_output=True, text=True
     )
-    if result.returncode != 0:
-        print(f"[!] Git-Pull fehlgeschlagen: {result.stderr.strip()}")
+    if fetch.returncode != 0:
+        print(f"[!] Git-Fetch fehlgeschlagen: {fetch.stderr.strip()}")
+        return
+    merge = subprocess.run(
+        ["git", "merge", "--ff-only", "FETCH_HEAD"],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if merge.returncode != 0:
+        print(f"[!] Git-Merge fehlgeschlagen: {merge.stderr.strip()}")
 
 
 def main():
