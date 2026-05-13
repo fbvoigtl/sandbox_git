@@ -6,8 +6,8 @@ Hier schreiben alle gemeinsam. Wenn ihr Konflikte üben wollt — perfekter Ort 
 
 (Tragt euch ein!)
 
-- Person 1: ...
-- Person 2: ...
+- Person 1: Luis
+- Person 2: 
 - Person 3: Jonas
 - Person 4: Leonie
 
