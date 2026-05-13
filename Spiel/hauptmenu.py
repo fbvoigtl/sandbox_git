@@ -53,6 +53,7 @@ def zeige_hauptmenu(name: str):
 
         if auswahl == "1":
             starte_spiel("starfighter")
+            git_auto_save(name)
         elif auswahl == "2":
             scores = lade_highscores(name)
             print(f"\nHighscores für {name}:")
@@ -73,6 +74,47 @@ def zeige_hauptmenu(name: str):
 def starte_spiel(spiel_key: str):
     spiel_pfad = os.path.join(SPIEL_DIR, f"{spiel_key}.py")
     subprocess.run([sys.executable, spiel_pfad])
+
+
+def git_auto_save(name: str):
+    settings = os.path.join("spielerdaten", f"settings_{name}.txt")
+    highscore = os.path.join("spielerdaten", f"highscore_{name}.txt")
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain", settings, highscore],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if status.returncode != 0:
+        print(f"[!] Git-Status fehlgeschlagen: {status.stderr.strip()}")
+        return
+    if not status.stdout.strip():
+        return
+
+    result = subprocess.run(
+        ["git", "add", settings, highscore],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"[!] Git-Add fehlgeschlagen: {result.stderr.strip()}")
+        return
+
+    result = subprocess.run(
+        ["git", "commit", "-m", f"Auto-save: {name} nach Starfighter"],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"[!] Git-Commit fehlgeschlagen: {result.stderr.strip()}")
+        return
+
+    result = subprocess.run(
+        ["git", "push"],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"[!] Git-Push fehlgeschlagen: {result.stderr.strip()}")
+        return
+
+    print(f"Spielstand von '{name}' gespeichert und gepusht.")
 
 
 def wende_farbe_an(hex_farbe: str):
@@ -140,7 +182,17 @@ def zeige_einstellungen(name: str):
             print("Ungültige Eingabe.")
 
 
+def git_auto_pull():
+    result = subprocess.run(
+        ["git", "pull"],
+        cwd=SPIEL_DIR, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"[!] Git-Pull fehlgeschlagen: {result.stderr.strip()}")
+
+
 def main():
+    git_auto_pull()
     print("╔══════════════════════════════════════╗")
     print("║       Willkommen im Spielmenü        ║")
     print("╚══════════════════════════════════════╝")
