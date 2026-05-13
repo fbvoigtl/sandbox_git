@@ -1,6 +1,0 @@
-game_speed=0.15
-track_width=40
-track_height=10
-obstacle_rate=18
-max_jump=4
-gravity=1
