@@ -27,8 +27,23 @@ def spieler_init(name: str) -> dict:
 
 def lade_highscores(name: str) -> dict:
     pfad = os.path.join(DATA_DIR, f"highscore_{name}.txt")
+    scores = {}
     with open(pfad) as f:
-        return json.load(f)
+        for zeile in f:
+            zeile = zeile.strip()
+            if ":" in zeile:
+                spiel, werte = zeile.split(":", 1)
+                scores[spiel] = [int(p) for p in werte.split(",") if p]
+    return scores
+
+
+def speichere_highscore(name: str, spiel_key: str, punkte: int):
+    pfad = os.path.join(DATA_DIR, f"highscore_{name}.txt")
+    scores = lade_highscores(name)
+    scores.setdefault(spiel_key, []).append(punkte)
+    with open(pfad, "w") as f:
+        for spiel, werte in scores.items():
+            f.write(f"{spiel}:{','.join(str(p) for p in werte)}\n")
 
 
 def zeige_hauptmenu(name: str):
@@ -52,8 +67,11 @@ def zeige_hauptmenu(name: str):
         elif auswahl == "3":
             scores = lade_highscores(name)
             print(f"\nHighscores für {name}:")
-            for spiel, punkte in scores.items():
-                print(f"  {spiel}: {punkte} Punkte")
+            if scores:
+                for spiel, werte in scores.items():
+                    print(f"  {spiel}: {','.join(str(p) for p in werte)}")
+            else:
+                print("  Noch keine Einträge.")
         elif auswahl == "4":
             zeige_einstellungen(name)
         elif auswahl == "0":
@@ -81,16 +99,9 @@ def starte_spiel(name: str, spiel_key: str):
     with open(tmp_pfad, "w") as f:
         json.dump(tmp, f, indent=2)
 
-    highscore_pfad = os.path.join(DATA_DIR, f"highscore_{name}.txt")
-    with open(highscore_pfad) as f:
-        scores = json.load(f)
-    if punkte > scores.get(spiel_key, 0):
-        scores[spiel_key] = punkte
-        with open(highscore_pfad, "w") as f:
-            json.dump(scores, f, indent=2)
-        print(f"Neuer Highscore: {punkte} Punkte!")
-    else:
-        print(f"Dein Highscore bleibt: {scores[spiel_key]} Punkte.")
+    speichere_highscore(name, spiel_key, punkte)
+    scores = lade_highscores(name)
+    print(f"Punkte gespeichert. Bisherige Scores: {scores[spiel_key]}")
 
 
 def wende_farbe_an(hex_farbe: str):
