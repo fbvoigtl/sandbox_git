@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import sys
@@ -7,6 +8,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
+DATA_DIR = BASE_DIR / "spielerdaten"
 GAME_NAME = "starfighter"
 ENEMY_SPRITE = "VVVVV"
 ENEMY_HALF_WIDTH = len(ENEMY_SPRITE) // 2
@@ -52,17 +54,29 @@ def find_first_existing(paths):
     return paths[0]
 
 
+def read_json_file(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
 def load_gamertag():
     tmp_path = find_first_existing(
         [
-            BASE_DIR / "spielerdaten" / "tmp.txt",
+            DATA_DIR / "tmp.txt",
             ROOT_DIR / "spielerdaten" / "tmp.txt",
         ]
     )
-    try:
-        tag = tmp_path.read_text(encoding="utf-8").strip()
-    except FileNotFoundError:
-        tag = "gamertag"
+    data = read_json_file(tmp_path)
+    tag = str(data.get("gamertag", "")).strip()
+
+    if not tag:
+        try:
+            tag = tmp_path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            tag = "gamertag"
+
     return tag or "gamertag"
 
 
@@ -88,6 +102,11 @@ def profile_paths(gamertag):
 
 
 def load_terminal_color(settings_path):
+    data = read_json_file(settings_path)
+    color = str(data.get("farbe", "")).strip()
+    if color:
+        return color_from_hex(color)
+
     try:
         return color_from_hex(settings_path.read_text(encoding="utf-8").splitlines()[0])
     except (FileNotFoundError, IndexError):
