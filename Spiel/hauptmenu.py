@@ -1,7 +1,9 @@
 import os
-import json
+import subprocess
+import sys
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "spielerdaten")
+SPIEL_DIR = os.path.dirname(__file__)
 
 
 def spieler_init(name: str) -> dict:
@@ -9,18 +11,17 @@ def spieler_init(name: str) -> dict:
 
     settings_pfad = os.path.join(DATA_DIR, f"settings_{name}.txt")
     highscore_pfad = os.path.join(DATA_DIR, f"highscore_{name}.txt")
-    tmp_pfad = os.path.join(DATA_DIR, f"tmp.txt")
+    tmp_pfad = os.path.join(DATA_DIR, "tmp.txt")
 
     if not os.path.exists(settings_pfad):
         with open(settings_pfad, "w") as f:
-            json.dump({"farbe": "#FFFFFF"}, f, indent=2)
+            f.write("#FFFFFF\n")
 
     if not os.path.exists(highscore_pfad):
-        with open(highscore_pfad, "w") as f:
-            pass
+        open(highscore_pfad, "w").close()
 
     with open(tmp_pfad, "w") as f:
-        json.dump({"gamertag": name}, f, indent=2)
+        f.write(name + "\n")
 
     return {"settings": settings_pfad, "highscore": highscore_pfad, "tmp": tmp_pfad}
 
@@ -37,34 +38,22 @@ def lade_highscores(name: str) -> dict:
     return scores
 
 
-def speichere_highscore(name: str, spiel_key: str, punkte: int):
-    pfad = os.path.join(DATA_DIR, f"highscore_{name}.txt")
-    scores = lade_highscores(name)
-    scores.setdefault(spiel_key, []).append(punkte)
-    with open(pfad, "w") as f:
-        for spiel, werte in scores.items():
-            f.write(f"{spiel}:{','.join(str(p) for p in werte)}\n")
-
-
 def zeige_hauptmenu(name: str):
     while True:
         print(f"\n{'='*40}")
         print(f"  Hauptmenü  –  Spieler: {name}")
         print(f"{'='*40}")
-        print("  [1]  Spiel 1 starten")
-        print("  [2]  Spiel 2 starten")
-        print("  [3]  Highscores anzeigen")
-        print("  [4]  Einstellungen")
+        print("  [1]  Starfighter")
+        print("  [2]  Highscores anzeigen")
+        print("  [3]  Einstellungen")
         print("  [0]  Beenden")
         print(f"{'='*40}")
 
         auswahl = input("Auswahl: ").strip()
 
         if auswahl == "1":
-            starte_spiel(name, "spiel1")
+            starte_spiel("starfighter")
         elif auswahl == "2":
-            starte_spiel(name, "spiel2")
-        elif auswahl == "3":
             scores = lade_highscores(name)
             print(f"\nHighscores für {name}:")
             if scores:
@@ -72,7 +61,7 @@ def zeige_hauptmenu(name: str):
                     print(f"  {spiel}: {','.join(str(p) for p in werte)}")
             else:
                 print("  Noch keine Einträge.")
-        elif auswahl == "4":
+        elif auswahl == "3":
             zeige_einstellungen(name)
         elif auswahl == "0":
             print("Auf Wiedersehen!")
@@ -81,27 +70,9 @@ def zeige_hauptmenu(name: str):
             print("Ungültige Eingabe.")
 
 
-def starte_spiel(name: str, spiel_key: str):
-    tmp_pfad = os.path.join(DATA_DIR, f"tmp_{name}.txt")
-    with open(tmp_pfad) as f:
-        tmp = json.load(f)
-    tmp["aktives_spiel"] = spiel_key
-    tmp["punkte"] = 0
-    with open(tmp_pfad, "w") as f:
-        json.dump(tmp, f, indent=2)
-
-    print(f"\n{spiel_key} gestartet – hier käme das Spiel...")
-
-    # Beispiel: Spieler erzielt 42 Punkte
-    punkte = 42
-    tmp["punkte"] = punkte
-    tmp["aktives_spiel"] = None
-    with open(tmp_pfad, "w") as f:
-        json.dump(tmp, f, indent=2)
-
-    speichere_highscore(name, spiel_key, punkte)
-    scores = lade_highscores(name)
-    print(f"Punkte gespeichert. Bisherige Scores: {scores[spiel_key]}")
+def starte_spiel(spiel_key: str):
+    spiel_pfad = os.path.join(SPIEL_DIR, f"{spiel_key}.py")
+    subprocess.run([sys.executable, spiel_pfad])
 
 
 def wende_farbe_an(hex_farbe: str):
@@ -127,13 +98,13 @@ FARBEN = {
 def zeige_einstellungen(name: str):
     settings_pfad = os.path.join(DATA_DIR, f"settings_{name}.txt")
     with open(settings_pfad) as f:
-        settings = json.load(f)
+        farbe = f.read().strip()
 
     while True:
         print(f"\n{'='*40}")
         print(f"  Einstellungen  –  Spieler: {name}")
         print(f"{'='*40}")
-        print(f"  Aktuelle Farbe: {settings['farbe']}")
+        print(f"  Aktuelle Farbe: {farbe}")
         print()
         for key, (label, hex_wert) in FARBEN.items():
             vorschau = f"({hex_wert})" if hex_wert else ""
@@ -159,11 +130,11 @@ def zeige_einstellungen(name: str):
                 else:
                     print("Format muss #RRGGBB sein.")
                     continue
-            settings["farbe"] = hex_wert
+            farbe = hex_wert
             with open(settings_pfad, "w") as f:
-                json.dump(settings, f, indent=2)
-            wende_farbe_an(hex_wert)
-            print(f"Farbe gesetzt: {label} ({hex_wert})")
+                f.write(farbe + "\n")
+            wende_farbe_an(farbe)
+            print(f"Farbe gesetzt: {label} ({farbe})")
             break
         else:
             print("Ungültige Eingabe.")
@@ -182,8 +153,8 @@ def main():
 
     dateien = spieler_init(name)
     with open(dateien["settings"]) as f:
-        settings = json.load(f)
-    wende_farbe_an(settings["farbe"])
+        farbe = f.read().strip()
+    wende_farbe_an(farbe)
     print(f"\nSpieler '{name}' geladen.")
 
     zeige_hauptmenu(name)
