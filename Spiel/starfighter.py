@@ -16,6 +16,8 @@ ENEMY_FALL_INTERVAL = 3
 INITIAL_MAX_ENEMIES = 2
 MAX_ENEMIES = 5
 ENEMIES_PER_MAX_INCREASE = 10
+PLAYER_SPEED = 2
+SHOT_COOLDOWN_FRAMES = 5
 
 
 def clear_screen():
@@ -147,8 +149,10 @@ class Keyboard:
         self.windows = os.name == "nt"
         if self.windows:
             import msvcrt
+            import ctypes
 
             self.msvcrt = msvcrt
+            self.user32 = ctypes.windll.user32
         else:
             import termios
             import tty
@@ -162,7 +166,7 @@ class Keyboard:
         if not self.windows:
             self.termios.tcsetattr(sys.stdin, self.termios.TCSADRAIN, self.old_settings)
 
-    def get_key(self):
+    def read_key(self):
         if self.windows:
             if not self.msvcrt.kbhit():
                 return None
@@ -177,6 +181,45 @@ class Keyboard:
         if select.select([sys.stdin], [], [], 0)[0]:
             return sys.stdin.read(1).lower()
         return None
+
+    def get_keys(self):
+        keys = []
+        while True:
+            key = self.read_key()
+            if key is None:
+                break
+            keys.append(key)
+        return keys
+
+    def clear_buffer(self):
+        if not self.windows:
+            return
+        while self.msvcrt.kbhit():
+            key = self.msvcrt.getch()
+            if key in (b"\x00", b"\xe0") and self.msvcrt.kbhit():
+                self.msvcrt.getch()
+
+    def is_pressed(self, virtual_key):
+        return bool(self.user32.GetAsyncKeyState(virtual_key) & 0x8000)
+
+    def get_state(self):
+        if self.windows:
+            state = {
+                "left": self.is_pressed(0x41) or self.is_pressed(0x25),
+                "right": self.is_pressed(0x44) or self.is_pressed(0x27),
+                "shoot": self.is_pressed(0x20),
+                "quit": self.is_pressed(0x51) or self.is_pressed(0x1B),
+            }
+            self.clear_buffer()
+            return state
+
+        keys = self.get_keys()
+        return {
+            "left": any(key in ("a", "left") for key in keys),
+            "right": any(key in ("d", "right") for key in keys),
+            "shoot": " " in keys,
+            "quit": any(key in ("q", "\x1b") for key in keys),
+        }
 
 
 def terminal_size():
@@ -254,23 +297,29 @@ def game_loop(gamertag, color):
     score = 0
     lives = 100
     defeated_enemies = 0
+    shot_cooldown = 0
     tick = 0
     fall_tick = 0
     next_enemy_in = 4
-    frame_time = 0.04
+    frame_time = 0.06
 
     with Keyboard() as keyboard:
         while lives > 0:
             started = time.monotonic()
-            key = keyboard.get_key()
-            if key in ("q", "\x1b"):
+            key_state = keyboard.get_state()
+            if key_state["quit"]:
                 break
-            if key in ("a", "left"):
-                player_x = max(3, player_x - 2)
-            if key in ("d", "right"):
-                player_x = min(width - 2, player_x + 2)
-            if key == " ":
+
+            movement = int(key_state["right"]) - int(key_state["left"])
+            if movement:
+                player_x += movement * PLAYER_SPEED
+                player_x = max(3, min(width - 2, player_x))
+
+            if shot_cooldown > 0:
+                shot_cooldown -= 1
+            if key_state["shoot"] and shot_cooldown == 0:
                 shots.append({"x": player_x, "y": height - 2})
+                shot_cooldown = SHOT_COOLDOWN_FRAMES
 
             tick += 1
             if tick >= next_enemy_in and len(enemies) < max_visible_enemies(defeated_enemies):
