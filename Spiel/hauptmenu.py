@@ -106,15 +106,35 @@ def git_auto_save(name: str):
         print(f"[!] Git-Commit fehlgeschlagen: {result.stderr.strip()}")
         return
 
-    result = subprocess.run(
-        ["git", "push"],
-        cwd=SPIEL_DIR, capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        print(f"[!] Git-Push fehlgeschlagen: {result.stderr.strip()}")
-        return
+    for versuch in range(3):
+        fetch = subprocess.run(
+            ["git", "fetch"],
+            cwd=SPIEL_DIR, capture_output=True, text=True
+        )
+        if fetch.returncode != 0:
+            print(f"[!] Git-Fetch fehlgeschlagen: {fetch.stderr.strip()}")
+            return
 
-    print(f"Spielstand von '{name}' gespeichert und gepusht.")
+        merge = subprocess.run(
+            ["git", "merge", "--ff-only", "FETCH_HEAD"],
+            cwd=SPIEL_DIR, capture_output=True, text=True
+        )
+        if merge.returncode != 0:
+            print(f"[!] Git-Merge fehlgeschlagen: {merge.stderr.strip()}")
+            return
+
+        push = subprocess.run(
+            ["git", "push"],
+            cwd=SPIEL_DIR, capture_output=True, text=True
+        )
+        if push.returncode == 0:
+            print(f"Spielstand von '{name}' gespeichert und gepusht.")
+            return
+
+        if versuch < 2:
+            pass
+        else:
+            print(f"[!] Git-Push fehlgeschlagen: {push.stderr.strip()}")
 
 
 def wende_farbe_an(hex_farbe: str):
