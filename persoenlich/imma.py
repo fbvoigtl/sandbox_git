@@ -1,2 +1,2 @@
-while True:
+while False:
     print("für immaaaaa")
